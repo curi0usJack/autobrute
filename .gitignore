@@ -1,0 +1,14 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+#  Editors
+.vscode
+*.vim
+
+# Directories
+output/
+tmp
+
+# swap files
+*.swp
