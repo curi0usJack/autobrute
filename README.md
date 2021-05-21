@@ -1,1 +1,1 @@
-foo f
+Auto bruting of HTTP Simple & NTLM pages.
