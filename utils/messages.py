@@ -1,5 +1,7 @@
 #!/usr/bin/python3 
 
+import sys
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -18,5 +20,7 @@ class message:
     def success(self, message):
         print(bcolors.OKGREEN + "[+] {}".format(message) + bcolors.ENDC)
 
-    def error(self, message):
+    def error(self, message, should_exit):
         print(bcolors.FAIL + "[!] {}".format(message) + bcolors.ENDC)
+        if should_exit:
+            sys.exit(1)
