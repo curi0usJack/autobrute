@@ -114,6 +114,7 @@ def main():
 
     for pwd in master_list:
         pwd = pwd.strip('\n')
+        outfile = open(options.outputdir + "/" + pwd + ".txt", 'w')
         for user in userfile:
             user = user.strip('\n')
             resp = sendrequest(options.targeturl, user, pwd, options.domain, log)
@@ -124,6 +125,9 @@ def main():
                 log.success(logoutput)
             else:
                 log.error(logoutput, False)
+
+            outfile.write(logoutput + '\n')
+            outfile.flush()
 
         completed_pwds.write(pwd + '\n')
         completed_pwds.flush()
