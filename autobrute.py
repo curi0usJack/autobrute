@@ -98,14 +98,14 @@ def main():
             if '- ' in i[:2]:
                 master_list.append(i.lstrip('- ').rstrip('\n'))
 
-    for user in userfile:
-        user = user.strip('\n')
-        for pwd in master_list:
-            pwd = pwd.strip('\n')
+    for pwd in master_list:
+        pwd = pwd.strip('\n')
+        for user in userfile:
+            user = user.strip('\n')
             sendrequest(options.targeturl, user, pwd, options.domain, log)
-            completed_pwds.write(pwd + '\n')
-            completed_pwds.flush()
-            time.sleep(3)
+
+        completed_pwds.write(pwd + '\n')
+        completed_pwds.flush()
 
 
 if __name__ == '__main__':
